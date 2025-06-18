@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Origin: Train Ticket Booking</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body { 
+            margin: 0; 
+            font-family: Arial, sans-serif; 
+            background: linear-gradient(135deg, #1e3a8a, #7e22ce, #4b6cb7, #182848);
+            background-size: 400%;
+            animation: gradient 15s ease infinite;
+        }
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .hover-scale { 
+            transition: transform 0.3s; 
+        }
+        .hover-scale:hover { 
+            transform: scale(1.05); 
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="flex flex-col items-center justify-center h-screen text-center px-4 text-white">
+        <h2 class="text-4xl md:text-6xl font-bold mb-4 hover-scale">Welcome to Origin</h2>
+        <p class="text-lg md:text-xl mb-6">Book your train tickets with ease.</p>
+        <a href="#" id="download-link" class="bg-white text-indigo-600 px-6 py-3 rounded-full font-semibold hover:bg-gray-100 hover-scale">Download Now</a>
+    </section>
+
+    <script src="app.js"></script>
+</body>
+</html>
