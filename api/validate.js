@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     const pat = process.env.GITHUB_PAT; // Set in Vercel dashboard
     const response = await fetch('https://api.github.com/repos/originalive/verify/contents/licenses.json', {
       headers: {
-        'Authorization': `Bearer ${pat}`,
+        'Authorization': `token ${BLUE_BERRY}`,
         'Accept': 'application/json'
       }
     });
@@ -50,7 +50,7 @@ async function updateLicenseFile(licenses, sha, pat) {
   const response = await fetch('https://api.github.com/repos/originalive/verify/contents/licenses.json', {
     method: 'PUT',
     headers: {
-      'Authorization': `Bearer ${pat}`,
+      'Authorization': `token ${BLUE_BERRY}`,
       'Accept': 'application/json'
     },
     body: JSON.stringify({
