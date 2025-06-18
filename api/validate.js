@@ -1,4 +1,3 @@
-// api/validate.js
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -10,10 +9,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const pat = process.env.GITHUB_BLUEBERRY; // Set in Vercel dashboard
+    const pat = process.env.GITHUB_BLUEBERRY;
+
     const response = await fetch('https://api.github.com/repos/originalive/verify/contents/licenses.json', {
       headers: {
-        'Authorization': `token ${BLUEBERRY}`,
+        'Authorization': `token ${pat}`,
         'Accept': 'application/json'
       }
     });
@@ -42,6 +42,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true, message: 'License validated!', expiry: license.expiry });
   } catch (error) {
+    console.error('Server error:', error);
     return res.status(500).json({ error: 'Server error: ' + error.message });
   }
 }
@@ -50,7 +51,7 @@ async function updateLicenseFile(licenses, sha, pat) {
   const response = await fetch('https://api.github.com/repos/originalive/verify/contents/licenses.json', {
     method: 'PUT',
     headers: {
-      'Authorization': `token ${BLUEBERRY}`,
+      'Authorization': `token ${pat}`,
       'Accept': 'application/json'
     },
     body: JSON.stringify({
