@@ -12,7 +12,7 @@ export default async function generateToken(req, res) {
   // Check for licenseKey and deviceId payload
   const { licenseKey, deviceId } = req.body;
   if (licenseKey && deviceId && typeof licenseKey === 'string' && typeof deviceId === 'string') {
-    return res.status(200).json({ success: true, tokens: generateRandomToken() });
+    return res.status(200).json({ success: true, token: generateRandomToken() });
   }
 
   return res.status(400).json({ error: 'licenseKey and deviceId must be valid non-empty strings' });
