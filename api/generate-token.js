@@ -9,13 +9,13 @@ export default async function generateToken(req, res) {
     return res.status(400).json({ error: 'Invalid request body' });
   }
 
-  // Check for UserName and MacAddress payload
-  const { UserName, MacAddress } = req.body;
-  if (UserName && MacAddress && typeof UserName === 'string' && typeof MacAddress === 'string') {
+  // Check for licenseKey and deviceId payload
+  const { licenseKey, deviceId } = req.body;
+  if (licenseKey && deviceId && typeof licenseKey === 'string' && typeof deviceId === 'string') {
     return res.status(200).json({ success: true, tokens: generateRandomToken() });
   }
 
-  return res.status(400).json({ error: 'UserName and MacAddress must be valid non-empty strings' });
+  return res.status(400).json({ error: 'licenseKey and deviceId must be valid non-empty strings' });
 
   function generateRandomToken() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
