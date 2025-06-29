@@ -1,29 +1,10 @@
-const generateJWT = (payload, secret) => {
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64');
-  const payloadStr = Buffer.from(JSON.stringify(payload)).toString('base64');
-  const signature = Buffer.from(`${header}.${payloadStr}.${secret}`).toString('base64');
-  return `${header}.${payloadStr}.${signature}`;
-};
-
-const verifyJWT = (token, secret) => {
-  try {
-    const [header, payload, signature] = token.split('.');
-    const expectedSignature = Buffer.from(`${header}.${payload}.${secret}`).toString('base64');
-    if (signature !== expectedSignature) return null;
-    return JSON.parse(Buffer.from(payload, 'base64').toString());
-  } catch {
-    return null;
-  }
-};
-
 export default async function validate(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { key, clientId, token } = req.body;
-  const JWT_SECRET = process.env.JWT_SECRET || 'your-secure-jwt-secret';
-
+  const { key, clientId } = req.body;
+  
   if (!key || !clientId) {
     return res.status(400).json({ error: 'Key and clientId are required' });
   }
@@ -69,40 +50,17 @@ export default async function validate(req, res) {
     });
 
     let needsUpdate = false;
-    let jwtToken = token;
 
-    // Handle token validation
-    if (license.loginCount > 0) { // After first login, token is required
-      if (!token) {
-        return res.status(401).json({
-          success: false,
-          message: 'Token required after first login'
-        });
-      }
-      const payload = verifyJWT(token, JWT_SECRET);
-      if (!payload || payload.clientId !== clientId || payload.key !== key || token !== license.token) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid or expired token'
-        });
-      }
-    }
-
-    // First login: generate and store token
-    if (!token) {
-      // Generate JWT token
-      const tokenPayload = {
-        clientId,
-        key,
-        exp: Math.floor(currentDate.getTime() / 1000) + (license.validityDays * 24 * 60 * 60)
-      };
-      jwtToken = generateJWT(tokenPayload, JWT_SECRET);
-      license.token = jwtToken; // Store token in license
+    // Initialize license on first use
+    if (!license.activatedDate) {
+      license.activatedDate = indianTime;
+      license.clientIds = [];
+      license.loginCount = 0;
       needsUpdate = true;
     }
 
     // Calculate days left
-    const activatedDate = new Date(license.activatedDate?.split(', ')[0].split('/').reverse().join('-') || currentDate);
+    const activatedDate = new Date(license.activatedDate.split(', ')[0].split('/').reverse().join('-'));
     const daysPassed = Math.floor((currentDate - activatedDate) / (1000 * 60 * 60 * 24));
     const daysLeft = Math.max(0, license.validityDays - daysPassed);
 
@@ -131,10 +89,7 @@ export default async function validate(req, res) {
     // Update login info
     license.loginCount += 1;
     license.lastLogin = indianTime;
-    if (!license.activatedDate) {
-      license.activatedDate = indianTime;
-      needsUpdate = true;
-    }
+    needsUpdate = true;
 
     // Save changes
     if (needsUpdate) {
@@ -145,8 +100,7 @@ export default async function validate(req, res) {
       success: true,
       expired: false,
       message: 'License valid',
-      daysLeft: daysLeft,
-      token: jwtToken
+      daysLeft: daysLeft
     });
 
   } catch (error) {
