@@ -70,7 +70,11 @@ export default async function validate(req, res) {
     // Find license (case-insensitive)
     const license = licenses.find((l) => l.key && l.key.toLowerCase() === key.toLowerCase());
     if (!license) {
-      return res.status(400).json({ success: false, message: 'Invalid license key' });
+      return res.status(400).json({ 
+        success: false, 
+        expired: false,
+        message: 'Invalid license key' 
+      });
     }
 
     // Validate license structure
@@ -91,17 +95,63 @@ export default async function validate(req, res) {
       needsUpdate = true;
     }
 
-    // Check if license is expired
-    if (license.isExpired) {
-      return res.status(400).json({ success: false, message: 'License key has expired' });
+    // Initialize firstUsed if invalid or missing
+    if (!license.firstUsed || isNaN(new Date(license.firstUsed))) {
+      license.firstUsed = new Date().toISOString();
+      needsUpdate = true;
     }
 
-    // Validate clientId binding
+    // **CRITICAL: Calculate days left EVERY TIME before any other checks**
+    const firstUsedDate = new Date(license.firstUsed);
+    const currentDate = new Date();
+    const daysSinceFirstUse = Math.max(0, Math.floor((currentDate - firstUsedDate) / (1000 * 60 * 60 * 24)));
+    const initialDays = Number.isInteger(license.initialDays) && license.initialDays > 0 ? license.initialDays : 30;
+    
+    // Always recalculate daysLeft - this ensures real-time expiry check
+    const calculatedDaysLeft = Math.max(0, initialDays - daysSinceFirstUse);
+    
+    // Update daysLeft if it has changed
+    if (license.daysLeft !== calculatedDaysLeft) {
+      license.daysLeft = calculatedDaysLeft;
+      needsUpdate = true;
+    }
+
+    // **CRITICAL: Set expired flag if days are 0 or less**
+    if (license.daysLeft <= 0) {
+      if (!license.isExpired) {
+        license.isExpired = true;
+        needsUpdate = true;
+      }
+    }
+
+    // **FIRST PRIORITY: Check if license is expired - BLOCK ACCESS IMMEDIATELY**
+    if (license.isExpired || license.daysLeft <= 0) {
+      // Update the license file to save the expired status
+      if (needsUpdate) {
+        try {
+          await updateLicenseFile(licenses, data.sha, pat);
+        } catch (error) {
+          console.error('Failed to update expired license:', error);
+        }
+      }
+      
+      return res.status(403).json({ 
+        success: false, 
+        expired: true,
+        message: 'Your license has expired. Please contact support to renew your license.',
+        daysLeft: 0,
+        loginCount: license.loginCount || 0,
+        isExpired: true
+      });
+    }
+
+    // Validate clientId binding (only if license is not expired)
     const maxInstances = Number.isInteger(license.maxInstances) && license.maxInstances > 0 ? license.maxInstances : 1;
     if (!license.clientIds.includes(clientId)) {
       if (license.clientIds.length >= maxInstances) {
         return res.status(400).json({
           success: false,
+          expired: false,
           message: `License key is bound to maximum allowed instances (${maxInstances})`,
         });
       }
@@ -109,28 +159,14 @@ export default async function validate(req, res) {
       needsUpdate = true;
     }
 
-    // Initialize firstUsed if invalid or missing
-    if (!license.firstUsed || isNaN(new Date(license.firstUsed))) {
-      license.firstUsed = new Date().toISOString();
-      needsUpdate = true;
-    }
-
-    // Calculate days left only if the date has changed
-    const firstUsedDate = new Date(license.firstUsed);
-    const currentDate = new Date();
-    const daysSinceFirstUse = Math.max(0, Math.floor((currentDate - firstUsedDate) / (1000 * 60 * 60 * 24)));
-    const initialDays = Number.isInteger(license.initialDays) && license.initialDays > 0 ? license.initialDays : 30;
+    // Update lastChecked if date has changed
     const lastChecked = license.lastChecked && !isNaN(new Date(license.lastChecked)) ? new Date(license.lastChecked) : null;
     if (!lastChecked || lastChecked.toDateString() !== currentDate.toDateString()) {
-      license.daysLeft = Math.max(0, initialDays - daysSinceFirstUse);
       license.lastChecked = currentDate.toISOString();
-      if (license.daysLeft === 0) {
-        license.isExpired = true;
-      }
       needsUpdate = true;
     }
 
-    // Increment login count
+    // Increment login count (only for successful logins)
     license.loginCount += 1;
     needsUpdate = true;
 
@@ -144,16 +180,18 @@ export default async function validate(req, res) {
       }
     }
 
-    // Return success response
+    // Return success response (only if license is valid and not expired)
     return res.status(200).json({
       success: true,
-      message: 'License validated!',
+      expired: false,
+      message: 'License validated successfully!',
       daysLeft: license.daysLeft,
       loginCount: license.loginCount,
-      isExpired: license.isExpired,
+      isExpired: false,
       maxInstances: maxInstances,
       boundInstances: license.clientIds.length,
     });
+
   } catch (error) {
     console.error('Server error:', error);
     return res.status(500).json({ error: 'Internal server error' });
