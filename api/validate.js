@@ -3,13 +3,9 @@ export default async function validate(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  if (!req.body || typeof req.body !== 'object') {
-    return res.status(400).json({ error: 'Invalid request body' });
-  }
-
   const { key, clientId } = req.body;
   
-  if (!key || !clientId || typeof key !== 'string' || typeof clientId !== 'string') {
+  if (!key || !clientId) {
     return res.status(400).json({ error: 'Key and clientId are required' });
   }
 
@@ -35,67 +31,50 @@ export default async function validate(req, res) {
     const licenses = JSON.parse(Buffer.from(data.content, 'base64').toString());
 
     // Find license
-    const license = licenses.find((l) => l.key && l.key.toLowerCase() === key.toLowerCase());
+    const license = licenses.find(l => l.key === key);
     if (!license) {
       return res.status(400).json({ 
         success: false, 
-        expired: false,
         message: 'Invalid license key' 
       });
     }
 
+    const currentDate = new Date();
+    const indianTime = currentDate.toLocaleString('en-IN', { 
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
     let needsUpdate = false;
 
-    // Initialize fields if missing
-    if (!Array.isArray(license.clientIds)) {
+    // Initialize license on first use
+    if (!license.activatedDate) {
+      license.activatedDate = indianTime;
       license.clientIds = [];
-      needsUpdate = true;
-    }
-    if (!Number.isInteger(license.loginCount)) {
       license.loginCount = 0;
       needsUpdate = true;
     }
 
-    // Set firstUsed if not exists
-    if (!license.firstUsed) {
-      license.firstUsed = new Date().toISOString();
-      needsUpdate = true;
-    }
-
     // Calculate days left
-    const firstUsedDate = new Date(license.firstUsed);
-    const currentDate = new Date();
-    const daysSinceFirstUse = Math.floor((currentDate - firstUsedDate) / (1000 * 60 * 60 * 24));
-    const initialDays = license.initialDays || 30;
-    const calculatedDaysLeft = Math.max(0, initialDays - daysSinceFirstUse);
+    const activatedDate = new Date(license.activatedDate.split(', ')[0].split('/').reverse().join('-'));
+    const daysPassed = Math.floor((currentDate - activatedDate) / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.max(0, license.validityDays - daysPassed);
 
-    // Update days left
-    if (license.daysLeft !== calculatedDaysLeft) {
-      license.daysLeft = calculatedDaysLeft;
-      needsUpdate = true;
-    }
-
-    // Set expired flag if days = 0
-    if (license.daysLeft === 0) {
-      license.isExpired = true;
-      needsUpdate = true;
-    }
-
-    // **BLOCK ACCESS IF EXPIRED**
-    if (license.isExpired || license.daysLeft === 0) {
-      if (needsUpdate) {
-        await updateLicenseFile(licenses, data.sha, pat);
-      }
-      
+    // Check if expired
+    if (daysLeft === 0) {
       return res.status(403).json({ 
         success: false, 
         expired: true,
-        message: 'License expired. Purchase new license.',
+        message: 'Key expired. Purchase a new key or extend it.',
         daysLeft: 0
       });
     }
 
-    // Check client binding
+    // Check client instances
     const maxInstances = license.maxInstances || 1;
     if (!license.clientIds.includes(clientId)) {
       if (license.clientIds.length >= maxInstances) {
@@ -108,9 +87,9 @@ export default async function validate(req, res) {
       needsUpdate = true;
     }
 
-    // Update login count
+    // Update login info
     license.loginCount += 1;
-    license.lastChecked = currentDate.toISOString();
+    license.lastLogin = indianTime;
     needsUpdate = true;
 
     // Save changes
@@ -122,7 +101,9 @@ export default async function validate(req, res) {
       success: true,
       expired: false,
       message: 'License valid',
-      daysLeft: license.daysLeft,
+      daysLeft: daysLeft,
+      activatedDate: license.activatedDate,
+      lastLogin: license.lastLogin,
       loginCount: license.loginCount
     });
 
