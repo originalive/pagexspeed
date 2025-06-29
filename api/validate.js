@@ -15,10 +15,7 @@ export default async function validate(req, res) {
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
-    // Rate limiting check (prevent spam)
-    const clientKey = `${clientId}_${key}`;
-    // You can implement Redis-based rate limiting here
-
+    // Fetch licenses from GitHub
     const response = await fetch('https://api.github.com/repos/originalive/verify/contents/licenses.json', {
       headers: {
         'Authorization': `token ${pat}`,
@@ -33,6 +30,7 @@ export default async function validate(req, res) {
     const data = await response.json();
     const licenses = JSON.parse(Buffer.from(data.content, 'base64').toString());
 
+    // Find license
     const license = licenses.find(l => l.key === key);
     if (!license) {
       return res.status(400).json({ 
@@ -53,6 +51,7 @@ export default async function validate(req, res) {
 
     let needsUpdate = false;
 
+    // Initialize license on first use
     if (!license.activatedDate) {
       license.activatedDate = indianTime;
       license.clientIds = [];
@@ -74,7 +73,7 @@ export default async function validate(req, res) {
       });
     }
 
-    // Enhanced client validation
+    // Check client instances
     const maxInstances = license.maxInstances || 1;
     if (!license.clientIds.includes(clientId)) {
       if (license.clientIds.length >= maxInstances) {
@@ -87,36 +86,44 @@ export default async function validate(req, res) {
       needsUpdate = true;
     }
 
-    // Security: Check for suspicious activity
-    const timeSinceLastLogin = license.lastLogin ? 
-      (currentDate - new Date(license.lastLogin.split(', ')[0].split('/').reverse().join('-'))) / (1000 * 60) : 0;
-    
-    if (timeSinceLastLogin < 1) { // Less than 1 minute
-      return res.status(429).json({
-        success: false,
-        message: 'Too many requests. Please try again later.'
-      });
-    }
-
+    // Update login info
     license.loginCount += 1;
     license.lastLogin = indianTime;
     needsUpdate = true;
 
+    // Save changes
     if (needsUpdate) {
       await updateLicenseFile(licenses, data.sha, pat);
     }
 
-    // Return minimal info to client
     return res.status(200).json({
       success: true,
       expired: false,
       message: 'License valid',
       daysLeft: daysLeft
-      // Don't send sensitive info like loginCount, activatedDate, etc.
     });
 
   } catch (error) {
     console.error('Server error:', error);
     return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+async function updateLicenseFile(licenses, sha, pat) {
+  const response = await fetch('https://api.github.com/repos/originalive/verify/contents/licenses.json', {
+    method: 'PUT',
+    headers: {
+      'Authorization': `token ${pat}`,
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({
+      message: 'Update license data',
+      content: Buffer.from(JSON.stringify(licenses, null, 2)).toString('base64'),
+      sha: sha,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update license file');
   }
 }
