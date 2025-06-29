@@ -16,33 +16,12 @@ const verifyJWT = (token, secret) => {
   }
 };
 
-// Simple challenge generation and verification (for simulation)
-const generateChallenge = (key, clientId) => {
-  const secret = process.env.CHALLENGE_SECRET || 'your-challenge-secret';
-  const nonce = Math.random().toString(36).substring(2, 15);
-  const payload = JSON.stringify({ key, clientId, nonce, timestamp: Date.now() });
-  return Buffer.from(`${payload}.${secret}`).toString('base64');
-};
-
-const verifyChallenge = (challenge, key, clientId) => {
-  try {
-    const secret = process.env.CHALLENGE_SECRET || 'your-challenge-secret';
-    const decoded = Buffer.from(challenge, 'base64').toString().split('.')[0];
-    const payload = JSON.parse(decoded);
-    if (payload.key !== key || payload.clientId !== clientId) return false;
-    // Ensure challenge is recent (e.g., within 5 minutes)
-    return (Date.now() - payload.timestamp) < 5 * 60 * 1000;
-  } catch {
-    return false;
-  }
-};
-
 export default async function validate(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { key, clientId, token, challenge } = req.body;
+  const { key, clientId, token } = req.body;
   const JWT_SECRET = process.env.JWT_SECRET || 'your-secure-jwt-secret';
 
   if (!key || !clientId) {
@@ -92,18 +71,8 @@ export default async function validate(req, res) {
     let needsUpdate = false;
     let jwtToken = token;
 
-    // Verify challenge for subsequent requests
-    if (license.loginCount > 0) {
-      if (!challenge || !verifyChallenge(challenge, key, clientId)) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid or missing challenge'
-        });
-      }
-    }
-
     // Handle token validation
-    if (license.loginCount > 0) {
+    if (license.loginCount > 0) { // After first login, token is required
       if (!token) {
         return res.status(401).json({
           success: false,
@@ -119,15 +88,16 @@ export default async function validate(req, res) {
       }
     }
 
-    // First login: generate and store token and challenge
+    // First login: generate and store token
     if (!token) {
+      // Generate JWT token
       const tokenPayload = {
         clientId,
         key,
         exp: Math.floor(currentDate.getTime() / 1000) + (license.validityDays * 24 * 60 * 60)
       };
       jwtToken = generateJWT(tokenPayload, JWT_SECRET);
-      license.token = jwtToken;
+      license.token = jwtToken; // Store token in license
       needsUpdate = true;
     }
 
@@ -166,9 +136,6 @@ export default async function validate(req, res) {
       needsUpdate = true;
     }
 
-    // Generate new challenge for the next request
-    const newChallenge = generateChallenge(key, clientId);
-
     // Save changes
     if (needsUpdate) {
       await updateLicenseFile(licenses, data.sha, pat);
@@ -179,8 +146,7 @@ export default async function validate(req, res) {
       expired: false,
       message: 'License valid',
       daysLeft: daysLeft,
-      token: jwtToken,
-      challenge: newChallenge
+      token: jwtToken
     });
 
   } catch (error) {
