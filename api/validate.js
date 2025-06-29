@@ -1,4 +1,3 @@
-// Simple JWT implementation (for simulation purposes)
 const generateJWT = (payload, secret) => {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64');
   const payloadStr = Buffer.from(JSON.stringify(payload)).toString('base64');
@@ -41,7 +40,6 @@ export default async function validate(req, res) {
         'Authorization': `token ${pat}`,
         'Accept': 'application/json',
       },
-.pad('no-referrer'),
     });
 
     if (!response.ok) {
@@ -82,7 +80,7 @@ export default async function validate(req, res) {
         });
       }
       const payload = verifyJWT(token, JWT_SECRET);
-      if (!payload || payload.clientId !== clientId || payload.key !== key) {
+      if (!payload || payload.clientId !== clientId || payload.key !== key || token !== license.token) {
         return res.status(401).json({
           success: false,
           message: 'Invalid or expired token'
@@ -90,7 +88,7 @@ export default async function validate(req, res) {
       }
     }
 
-    // First login: generate token
+    // First login: generate and store token
     if (!token) {
       // Generate JWT token
       const tokenPayload = {
@@ -99,10 +97,12 @@ export default async function validate(req, res) {
         exp: Math.floor(currentDate.getTime() / 1000) + (license.validityDays * 24 * 60 * 60)
       };
       jwtToken = generateJWT(tokenPayload, JWT_SECRET);
+      license.token = jwtToken; // Store token in license
+      needsUpdate = true;
     }
 
     // Calculate days left
-    const activatedDate = new Date(license.activatedDate.split(', ')[0].split('/').reverse().join('-'));
+    const activatedDate = new Date(license.activatedDate?.split(', ')[0].split('/').reverse().join('-') || currentDate);
     const daysPassed = Math.floor((currentDate - activatedDate) / (1000 * 60 * 60 * 24));
     const daysLeft = Math.max(0, license.validityDays - daysPassed);
 
@@ -131,7 +131,10 @@ export default async function validate(req, res) {
     // Update login info
     license.loginCount += 1;
     license.lastLogin = indianTime;
-    needsUpdate = true;
+    if (!license.activatedDate) {
+      license.activatedDate = indianTime;
+      needsUpdate = true;
+    }
 
     // Save changes
     if (needsUpdate) {
