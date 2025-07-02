@@ -178,7 +178,7 @@ export default async function validate(req, res) {
 }
 
 async function updateLicenseFile(licenses, sha, pat) {
-  const response = await fetch('https://api.github.com/repos/originalive/verify/contents/license.json', {
+  const response = await fetch('https://api.github.com/repos/originalive/verify/contents/licenses.json', {
     method: 'PUT',
     headers: {
       'Authorization': `token ${pat}`,
