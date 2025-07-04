@@ -6,6 +6,7 @@ export default async function solveCaptcha(req, res) {
   // Extract x-auth-token from headers
   const authToken = req.headers['x-auth-token'];
   
+  // Simple validation - just check if token exists
   if (!authToken) {
     return res.status(401).json({ error: 'x-auth-token is required' });
   }
@@ -22,7 +23,6 @@ export default async function solveCaptcha(req, res) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-auth-token': authToken  // Pass the auth token to the API
       },
       body: JSON.stringify({
         userid: "amankrmishra",
@@ -37,7 +37,7 @@ export default async function solveCaptcha(req, res) {
     
     const captchaResult = await response.json();
     
-    // Return the complete response from TrueCaptcha API
+    // Pass the complete response from TrueCaptcha API to client
     return res.status(200).json(captchaResult);
     
   } catch (error) {
