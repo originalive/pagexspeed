@@ -3,6 +3,13 @@ export default async function solveCaptcha(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
   
+  // Extract x-auth-token from headers
+  const authToken = req.headers['x-auth-token'];
+  
+  if (!authToken) {
+    return res.status(401).json({ error: 'x-auth-token is required' });
+  }
+  
   const { imageContent } = req.body;
   
   if (!imageContent) {
@@ -15,6 +22,7 @@ export default async function solveCaptcha(req, res) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-auth-token': authToken  // Pass the auth token to the API
       },
       body: JSON.stringify({
         userid: "amankrmishra",
@@ -29,9 +37,8 @@ export default async function solveCaptcha(req, res) {
     
     const captchaResult = await response.json();
     
-    return res.status(200).json({
-      result: captchaResult.result
-    });
+    // Return the complete response from TrueCaptcha API
+    return res.status(200).json(captchaResult);
     
   } catch (error) {
     console.error('Captcha solving error:', error);
