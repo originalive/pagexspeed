@@ -36,8 +36,8 @@ export default async function solveCaptcha(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        userid: "GANESH2993",
-        apikey: "LG9ywXgee7qIuA9TPzgc",
+        userid: "cyberwarrior9990",
+        apikey: "d0PD8zP13T4izN2guFxl",
         data: imageContent  // Direct base64 string
       })
     });
