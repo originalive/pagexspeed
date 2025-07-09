@@ -1,52 +1,72 @@
 export default async function handler(req, res) {
-  // ✅ CORS Headers
-  res.setHeader("Access-Control-Allow-Origin", "*"); // Extension-friendly
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS"); // Allow methods
-  res.setHeader("Access-Control-Allow-Headers", "*"); // Allow ALL headers (including access-token, etc.)
+  // ✅ CORS Headers — allow everything
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "*");
 
-  // ✅ Preflight request (OPTIONS)
+  // ✅ Handle preflight request
   if (req.method === "OPTIONS") {
-    return res.status(204).end(); // No content for preflight
+    return res.status(204).end(); // Preflight successful
   }
 
-  // ✅ Block unsupported methods
+  // ✅ Reject anything but POST
   if (req.method !== "POST") {
     return res.status(405).json({
       status: false,
-      message: "Method Not Allowed. Use POST only.",
+      success: false,
+      valid: false,
+      message: "Only POST allowed"
     });
   }
 
   try {
-    // ✅ Parse request body
-    const { key, mac } = req.body;
+    // ✅ Debug log: headers + body
+    console.log("🔍 Headers:", req.headers);
+    console.log("🔍 Body:", req.body);
 
-    // ✅ Input validation
-    if (!key || !mac) {
-      return res.status(400).json({
-        status: false,
-        message: "License key and Device ID are required.",
-      });
-    }
+    const { key, mac } = req.body || {};
 
-    // ✅ Simulated license check response
+    // ✅ Accept even if key/mac are missing (for brute-force testing)
+    // You can uncomment validation if needed later:
+    // if (!key || !mac) {
+    //   return res.status(400).json({
+    //     status: false,
+    //     message: "License key and Device ID are required.",
+    //   });
+    // }
+
+    // ✅ Simulated success response with ALL POSSIBLE KEYS
     return res.status(200).json({
-      status: true,
+      success: true,             // ✅ some systems expect this
+      status: true,              // ✅ others check this
+      valid: true,               // ✅ just in case
+      code: 200,                 // ✅ some bundles check `code === 200`
+      message: "Verified",       // ✅ generic pass message
+      token: "fake-token-value", // ✅ if they expect a token
+
+      // ✅ headers echo (for debug, remove in prod)
+      requestAccessToken: req.headers["access-token"] || null,
+
       data: {
         leftDays: 30,
         appVersion: "6.20.10",
-        ipList: "192.168.1.1,10.0.0.1",
-        shortMessage: "Your license is active and ready!",
-        News: "Welcome to SpeedX! New features coming soon.",
+        ipList: "127.0.0.1,192.168.1.1",
+        shortMessage: "Your license is active and valid!",
+        News: "🔥 SpeedX — Now powered via redirect!",
         keyType: "monthly",
-        payment: true
+        payment: true,
+        automation: true,       // ✅ possible trigger field
+        autoStart: true,        // ✅ some tools use this
+        validUntil: "2099-12-31"
       }
     });
-  } catch (error) {
-    console.error("License validation error:", error);
+  } catch (err) {
+    console.error("🔥 Server Error:", err);
     return res.status(500).json({
+      success: false,
       status: false,
-      message: "Internal server error during validation."
+      valid: false,
+      message: "Internal error during validation."
     });
   }
 }
