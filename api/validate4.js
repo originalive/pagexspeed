@@ -1,15 +1,23 @@
 export default async function handler(req, res) {
-  // ✅ CORS Headers — allow everything
+  // ✅ CORS headers — universal allow
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "*");
 
-  // ✅ Handle CORS preflight
+  // ✅ Preflight (OPTIONS)
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
 
-  // ✅ Reject non-POST methods
+  // ✅ 👇 Redirect logic (simulates server-side 307)
+  if (req.url === "/api/v1/process-auth") {
+    res.writeHead(307, {
+      Location: "https://speedxorigin.vercel.app/api/validate4"
+    });
+    return res.end();
+  }
+
+  // ✅ Only allow POST to main endpoint
   if (req.method !== "POST") {
     return res.status(405).json({
       success: false,
@@ -20,20 +28,20 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ✅ Extract values from headers and body
+    // ✅ Extract headers and body fields
     const accessToken = req.headers["access-token"] || null;
     const userAgent = req.headers["user-agent"] || "Unknown";
 
     const { key, mac, email, machine } = req.body || {};
 
-    // ✅ Simulated license validation response
+    // ✅ Simulated success payload
     const responsePayload = {
-      success: true,                   // ✅ General success
-      status: true,                    // ✅ Extra success flag
-      valid: true,                     // ✅ For strict validation
-      verified: true,                  // ✅ Some bundles check this
-      code: 200,                       // ✅ Numeric status
-      token: "fake-token-" + Math.random().toString(36).substring(2),
+      success: true,
+      status: true,
+      valid: true,
+      verified: true,
+      code: 200,
+      token: "vercel-bypass-token",
       message: "License validated successfully",
 
       // ✅ Automation triggers
@@ -42,21 +50,21 @@ export default async function handler(req, res) {
       autoTrigger: true,
       enabled: true,
 
-      // ✅ License details
+      // ✅ License & system info
       paid: true,
       payment: true,
-      leftDays: 999,
+      leftDays: 3650,
       validUntil: "2099-12-31",
       keyType: "lifetime",
       appVersion: "9.99.99",
 
-      // ✅ UI/UX messages
-      shortMessage: "✅ Welcome back! Everything is unlocked.",
-      longMessage: "Your subscription is active and all features are available.",
-      News: "🔥 New update: Obfuscation bypass supported.",
+      // ✅ UI messages
+      shortMessage: "✅ License active. Automation enabled.",
+      longMessage: "Welcome to SpeedX Pro! All systems go.",
+      News: "🚀 Update: Bundled with redirect support.",
       ipList: "127.0.0.1,192.168.0.1",
 
-      // ✅ Echo inputs for inspection
+      // ✅ Echo debug info
       request: {
         accessToken,
         userAgent,
@@ -68,18 +76,16 @@ export default async function handler(req, res) {
       }
     };
 
-    // ✅ Return response
     return res.status(200).json(responsePayload);
 
   } catch (err) {
-    // ❌ Internal server error fallback
-    console.error("🔥 Validation error:", err);
+    console.error("🔥 Server Error:", err);
     return res.status(500).json({
       success: false,
       status: false,
       valid: false,
-      message: "Internal server error",
-      error: err.message || "Unknown error"
+      message: "Internal error during validation",
+      error: err.message || "Unknown failure"
     });
   }
 }
