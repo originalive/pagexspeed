@@ -1,27 +1,27 @@
 export default async function handler(req, res) {
-  // ✅ Always send CORS headers (for both OPTIONS and real requests)
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  // ✅ CORS Headers
+  res.setHeader("Access-Control-Allow-Origin", "*"); // Extension-friendly
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS"); // Allow methods
+  res.setHeader("Access-Control-Allow-Headers", "*"); // Allow ALL headers (including access-token, etc.)
 
-  // ✅ Respond to preflight requests (CORS OPTIONS)
+  // ✅ Preflight request (OPTIONS)
   if (req.method === "OPTIONS") {
-    return res.status(204).end();
+    return res.status(204).end(); // No content for preflight
   }
 
-  // ✅ Only allow POST method
+  // ✅ Block unsupported methods
   if (req.method !== "POST") {
     return res.status(405).json({
       status: false,
-      message: "Method Not Allowed. Only POST is supported.",
+      message: "Method Not Allowed. Use POST only.",
     });
   }
 
   try {
-    // ✅ Parse JSON body
+    // ✅ Parse request body
     const { key, mac } = req.body;
 
-    // ✅ Validate input
+    // ✅ Input validation
     if (!key || !mac) {
       return res.status(400).json({
         status: false,
@@ -29,27 +29,24 @@ export default async function handler(req, res) {
       });
     }
 
-    // ✅ Simulate validation logic (customize as needed)
-    // For real apps, validate key/mac here (DB, API, etc.)
-
+    // ✅ Simulated license check response
     return res.status(200).json({
       status: true,
       data: {
-        leftDays: 30, // Example: 30 days left
+        leftDays: 30,
         appVersion: "6.20.10",
         ipList: "192.168.1.1,10.0.0.1",
         shortMessage: "Your license is active and ready!",
         News: "Welcome to SpeedX! New features coming soon.",
         keyType: "monthly",
-        payment: true,
-      },
+        payment: true
+      }
     });
-  } catch (err) {
-    // ✅ Handle unexpected errors
-    console.error("Validation error:", err);
+  } catch (error) {
+    console.error("License validation error:", error);
     return res.status(500).json({
       status: false,
-      message: "Server error during validation.",
+      message: "Internal server error during validation."
     });
   }
 }
