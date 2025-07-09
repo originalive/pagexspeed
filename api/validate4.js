@@ -1,84 +1,84 @@
 export default async function handler(req, res) {
-  // ✅ CORS Headers — allow everything for extension
+  // ✅ CORS Headers — allow everything
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "*");
 
-  // ✅ Handle preflight request
+  // ✅ Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return res.status(204).end(); // Preflight successful
+    return res.status(204).end();
   }
 
-  // ✅ Reject non-POST requests
+  // ✅ Reject non-POST methods
   if (req.method !== "POST") {
     return res.status(405).json({
-      status: false,
       success: false,
+      status: false,
       valid: false,
-      message: "Only POST allowed",
+      message: "Only POST method is allowed",
     });
   }
 
   try {
-    // ✅ Log headers and body for inspection
-    console.log("🔍 Incoming Headers:", req.headers);
-    console.log("🔍 Incoming Body:", req.body);
+    // ✅ Extract values from headers and body
+    const accessToken = req.headers["access-token"] || null;
+    const userAgent = req.headers["user-agent"] || "Unknown";
 
-    const { key, mac } = req.body || {};
+    const { key, mac, email, machine } = req.body || {};
 
-    // ✅ Send ultra-compatible brute-force response
-    return res.status(200).json({
-      // Top-level flags
-      success: true,
-      status: true,
-      valid: true,
-      verified: true,
-      result: "pass",
-      code: 200,
-      message: "Access granted",
-      license: "active",
-      response: "ok",
-      token: "fake-token-from-vercel",
-      ready: true,
+    // ✅ Simulated license validation response
+    const responsePayload = {
+      success: true,                   // ✅ General success
+      status: true,                    // ✅ Extra success flag
+      valid: true,                     // ✅ For strict validation
+      verified: true,                  // ✅ Some bundles check this
+      code: 200,                       // ✅ Numeric status
+      token: "fake-token-" + Math.random().toString(36).substring(2),
+      message: "License validated successfully",
+
+      // ✅ Automation triggers
       automation: true,
       autoStart: true,
+      autoTrigger: true,
       enabled: true,
-      requestAccessToken: req.headers["access-token"] || null,
 
-      // Deep payload
-      data: {
-        leftDays: 3650,
-        appVersion: "6.20.10",
-        version: "6.20.10",
-        ipList: "127.0.0.1,192.168.1.1",
-        keyType: "monthly",
-        keyStatus: "active",
-        payment: true,
-        automationStatus: "enabled",
-        triggerAutomation: true,
-        autoTrigger: true,
-        verified: true,
-        licenseCheck: true,
-        validUntil: "2099-12-31T23:59:59Z",
-        activationKey: key || "demo-key",
-        deviceId: mac || "demo-mac",
-        user: "testuser@example.com",
-        plan: "pro",
-        country: "IN",
-        shortMessage: "License OK!",
-        longMessage: "Welcome! Automation unlocked.",
-        instructions: "Enjoy your features",
-        responseMessage: "Authenticated",
-        expiresAt: "2099-12-31T23:59:59.999Z"
+      // ✅ License details
+      paid: true,
+      payment: true,
+      leftDays: 999,
+      validUntil: "2099-12-31",
+      keyType: "lifetime",
+      appVersion: "9.99.99",
+
+      // ✅ UI/UX messages
+      shortMessage: "✅ Welcome back! Everything is unlocked.",
+      longMessage: "Your subscription is active and all features are available.",
+      News: "🔥 New update: Obfuscation bypass supported.",
+      ipList: "127.0.0.1,192.168.0.1",
+
+      // ✅ Echo inputs for inspection
+      request: {
+        accessToken,
+        userAgent,
+        key,
+        mac,
+        email,
+        machine,
+        headers: req.headers
       }
-    });
+    };
+
+    // ✅ Return response
+    return res.status(200).json(responsePayload);
+
   } catch (err) {
-    console.error("🔥 Server Error:", err);
+    // ❌ Internal server error fallback
+    console.error("🔥 Validation error:", err);
     return res.status(500).json({
       success: false,
       status: false,
       valid: false,
-      message: "Internal error during validation",
+      message: "Internal server error",
       error: err.message || "Unknown error"
     });
   }
