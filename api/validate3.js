@@ -29,7 +29,7 @@ export default async function validate3(req, res) {
       return res.status(500).json({ status: false, message: 'Server configuration error.' });
     }
 
-    const githubApiUrl = 'https://api.github.com/repos/originalive/verify/contents/licenses.json';
+    const githubApiUrl = 'https://api.github.com/repos/originalive/verify/contents/licence3.json';
     const response = await fetch(githubApiUrl, {
       headers: { 'Authorization': `token ${pat}`, 'Accept': 'application/json' },
     });
