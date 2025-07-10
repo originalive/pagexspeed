@@ -30,7 +30,7 @@ export default async function handler(req, res) {
         keyType: "monthly",
         appVersion: "6.20.11",
         message: "Automation triggered successfully",
-        "Access-Token": "6b87036af1b3eb1eae8fef8211a7df7749875940d2868b8d7c16",
+        "AccessToken": "6b87036af1b3eb1eae8fef8211a7df7749875940d2868b8d7c16",
         key: key || "demo",
         mac: mac || "demo-mac",
         token: randomToken(),
