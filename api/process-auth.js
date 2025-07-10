@@ -17,6 +17,8 @@ export default async function handler(req, res) {
     });
   }
 
+  const randomToken = () => Math.random().toString(36).substring(2);
+
   try {
     const { key, mac } = req.body || {};
 
@@ -30,6 +32,11 @@ export default async function handler(req, res) {
         message: "Automation triggered successfully",
         key: key || "demo",
         mac: mac || "demo-mac",
+        token: randomToken(),
+        _token: randomToken(),
+        auth_token: randomToken(),
+        access_token: randomToken(),
+        license_key: randomToken(),
       },
     });
   } catch (error) {
