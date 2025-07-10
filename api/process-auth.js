@@ -26,14 +26,15 @@ export default async function handler(req, res) {
     return res.status(200).json({
       status: "ok",
       data: {
-        leftDays: 999,
+        leftDays: 30,
         keyType: "monthly",
-        appVersion: "6.20.10",
+        appVersion: "6.20.11",
         message: "Automation triggered successfully",
         key: key || "demo",
         mac: mac || "demo-mac",
         token: randomToken(),
         _token: randomToken(),
+        accesstoken: randomToken(),
         auth_token: randomToken(),
         access_token: randomToken(),
         license_key: randomToken(),
