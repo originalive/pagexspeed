@@ -89,14 +89,6 @@ export default async function handler(req, res) {
       await updateLicenseFile(licenses, data.sha, pat);
     }
 
-    // 🔐 Mock token generation
-    const token = `eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify({
-      key: licenseKey,
-      mac,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 900
-    })).toString('base64')}.TvJKEpV8_P5SkecQZtgFYqOctsncIH5lsMjgWwKNTfI`;
-
     return res.status(200).json({
       status: true,
       message: "Your key is active and ready to go.",
@@ -105,13 +97,12 @@ export default async function handler(req, res) {
         appVersion: GLOBAL_APP_VERSION,
         payment: license.paidStatus === true,
         shortMessage: license.shortMessage || "🔥🔥Doctor Doom Pahle Se Fast Update Kar Diya Gaya Hai @@@\n🧬 Panel Servar Issue Ke Karan Aaj Working Issue Tha Update Sevar Done\n💫💫 Best Payment Qr Irctc or Paytm QR@@@\nPhonepay QR   Booking Best @@@ @@@\n\nOnly Booking Time Use kare Faltu Test Mat kare @@@ @@@\nHamara Auto Update Funcation Hai Kush vi Update ayega to mil jayega",
-        keyType: license.keyType || "MONTHLY",
-        token
+        keyType: license.keyType || "MONTHLY"
       }
     });
 
   } catch (error) {
-    console.error('Server error in process-auth:', error);
+    console.error('Server error in authencate:', error);
     return res.status(500).json({
       status: false,
       message: 'Internal server error.'
@@ -120,4 +111,20 @@ export default async function handler(req, res) {
 }
 
 async function updateLicenseFile(licenses, sha, pat) {
- 
+  const response = await fetch('https://api.github.com/repos/originalive/verify/contents/licence3.json', {
+    method: 'PUT',
+    headers: {
+      'Authorization': `token ${pat}`,
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify({
+      message: 'Update license data',
+      content: Buffer.from(JSON.stringify(licenses, null, 2)).toString('base64'),
+      sha: sha,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to update license file');
+  }
+}
