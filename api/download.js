@@ -19,7 +19,7 @@ export default function handler(req, res) {
 
   try {
     // *** IMPORTANT: This is the only line you need to change on the server ***
-    const googleDriveShareLink = "YOUR_GOOGLE_DRIVE_SHARE_LINK_HERE";
+    const googleDriveShareLink = "https://drive.google.com/file/d/1LQZcIRxYAKfR_VQE3Apkz1vzvngT2Or5/view?usp=sharing";
 
     const directDownloadUrl = getDirectDownloadUrlFromGoogleDrive(googleDriveShareLink);
     res.status(200).json({
