@@ -1,5 +1,3 @@
-// /api/extension-url.js
-
 // This function handles incoming requests.
 export default function handler(request, response) {
   
