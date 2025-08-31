@@ -34,7 +34,7 @@ export default async function handler(req, res) {
       status: true,
       data: {
         leftDays: 30,
-        appVersion: "6.20.37",
+        appVersion: "6.20.41",
         ipList: "192.168.1.1,10.0.0.1",
         shortMessage: "Your license is active and ready!",
         News: "Welcome to SpeedX! New features coming soon.",
