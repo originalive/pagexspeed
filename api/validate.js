@@ -145,6 +145,7 @@ async function updateLicenseFile(licenseObject, sha, pat) {
     body: JSON.stringify({
       message: 'Update license data',
       content: Buffer.from(JSON.stringify(licenseObject, null, 2)).toString('base64'),
+      sha: sha,
     }),
   });
   if (!response.ok) {
