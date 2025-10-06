@@ -31,7 +31,7 @@ export default async function validate(req, res) {
     const licenseObject = JSON.parse(Buffer.from(fileData.content, 'base64').toString());
     
     // 2. Extract the private key and the licenses array from the object
-    const privateKey = licenseObject.privateKey;
+    const privateKey = licenseObject.privateKey.replace(/\\n/g, '\n');
     const licenses = licenseObject.licenses;
 
     if (!privateKey || !Array.isArray(licenses)) {
