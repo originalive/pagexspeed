@@ -18,7 +18,7 @@ export default async function validate(req, res) {
     const decryptedBuffer = privateDecrypt(
       {
         key: privateKey,
-        padding: constants.RSA_PKCS1_PADDING,
+        padding: constants.RSA_PKCS1_OAEP_PADDING,
       },
       Buffer.from(encryptedData, 'base64')
     );
