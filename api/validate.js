@@ -1,10 +1,35 @@
+import { privateDecrypt, constants } from 'crypto';
+
 export default async function validate(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { key, clientId } = req.body;
+  // Expect a single 'data' field containing the encrypted payload
+  const { data: encryptedData } = req.body;
+  if (!encryptedData) {
+    return res.status(400).json({ error: 'Encrypted data is required' });
+  }
+
+  let decryptedPayload;
+  try {
+    // Decrypt the payload using the private key
+    const privateKey = process.env.RSA_PRIVATE_KEY.replace(/\\n/g, '\n');
+    const decryptedBuffer = privateDecrypt(
+      {
+        key: privateKey,
+        padding: constants.RSA_PKCS1_PADDING,
+      },
+      Buffer.from(encryptedData, 'base64')
+    );
+    decryptedPayload = JSON.parse(decryptedBuffer.toString('utf-8'));
+  } catch (e) {
+    // If decryption fails, the payload is invalid or corrupt
+    return res.status(400).json({ success: false, message: 'Invalid payload.' });
+  }
   
+  // Extract key and clientId from the DECRYPTED payload
+  const { key, clientId } = decryptedPayload;
   if (!key || !clientId) {
     return res.status(400).json({ error: 'Key and clientId are required' });
   }
@@ -14,6 +39,8 @@ export default async function validate(req, res) {
     if (!pat) {
       return res.status(500).json({ error: 'Server configuration error' });
     }
+
+    // --- FROM THIS POINT ON, YOUR ORIGINAL LOGIC IS UNCHANGED ---
 
     // Fetch licenses from GitHub
     const response = await fetch('https://api.github.com/repos/originalive/verify/contents/licenses.json', {
@@ -110,6 +137,7 @@ export default async function validate(req, res) {
 }
 
 async function updateLicenseFile(licenses, sha, pat) {
+  // This helper function does not need any changes
   const response = await fetch('https://api.github.com/repos/originalive/verify/contents/licenses.json', {
     method: 'PUT',
     headers: {
