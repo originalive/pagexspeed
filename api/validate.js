@@ -1,6 +1,6 @@
 import { privateDecrypt, constants, randomBytes, createCipheriv } from 'crypto';
 
-// AES helper function to encrypt the server's response
+// Server-side AES encryption helper
 function encryptResponse(key, data) {
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', Buffer.from(key, 'base64'), iv);
@@ -12,6 +12,7 @@ function encryptResponse(key, data) {
     };
 }
 
+// Main API function
 export default async function validate(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -21,123 +22,100 @@ export default async function validate(req, res) {
   if (!encryptedData) {
     return res.status(400).json({ error: 'Encrypted data is required' });
   }
-
-  // We need a temporary AES key to send back errors if decryption fails later
+  
   let tempAesKey = null;
 
   try {
+    // 1. Fetch license file from GitHub
     const pat = process.env.GITHUB_BLUEBERRY;
-    if (!pat) {
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
-
-    // 1. Fetch the entire license file object from GitHub
     const githubResponse = await fetch('https://api.github.com/repos/originalive/verify/contents/licenses.json', {
       headers: { 'Authorization': `token ${pat}`, 'Accept': 'application/json' },
     });
-
-    if (!githubResponse.ok) {
-      return res.status(500).json({ error: 'Failed to fetch license data' });
-    }
+    if (!githubResponse.ok) throw new Error('Failed to fetch license file.');
 
     const fileData = await githubResponse.json();
     const licenseObject = JSON.parse(Buffer.from(fileData.content, 'base64').toString());
-    
-    // 2. Extract the private key and the licenses array
     const privateKeyString = licenseObject.privateKey;
     const licenses = licenseObject.licenses;
 
-    if (!privateKeyString || !Array.isArray(licenses)) {
-        return res.status(500).json({ error: 'Malformed license file on server.' });
-    }
-    
-    // 3. Decrypt the incoming payload using the extracted private key
+    // 2. Decrypt the incoming payload from the client
     let decryptedPayload;
     try {
-      const privateKey = privateKeyString.replace(/\\n/g, '\n'); // Ensure newlines are correct
-      const decryptedBuffer = privateDecrypt(
-        {
-          key: privateKey,
-          padding: constants.RSA_PKCS1_OAEP_PADDING,
-          oaepHash: 'sha256'
-        },
-        Buffer.from(encryptedData, 'base64')
-      );
-      decryptedPayload = JSON.parse(decryptedBuffer.toString('utf-8'));
+        const privateKey = privateKeyString.replace(/\\n/g, '\n');
+        decryptedPayload = JSON.parse(privateDecrypt({ key: privateKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(encryptedData, 'base64')).toString('utf-8'));
     } catch (e) {
-      // If decryption fails, we can't get the AES key to send an encrypted error.
-      // We must send a plain text error here.
-      return res.status(400).json({ success: false, message: 'Invalid payload. Decryption failed.' });
+        return res.status(400).json({ success: false, message: 'Invalid payload.' });
     }
-  
+
     const { key, clientId, aesKey } = decryptedPayload;
-    tempAesKey = aesKey; // Store aesKey for error handling in the outer catch block
+    tempAesKey = aesKey;
 
-    if (!key || !clientId || !aesKey) {
-        const encryptedError = encryptResponse(aesKey, { success: false, message: 'Required data missing in payload.' });
-        return res.status(400).json(encryptedError);
+    if (!clientId || !aesKey) {
+        return res.status(400).json(encryptResponse(aesKey, { success: false, message: 'Payload incomplete.' }));
     }
 
-    const license = licenses.find(l => l.key === key);
-    if (!license) {
-      const encryptedError = encryptResponse(aesKey, { success: false, message: 'Invalid license key' });
-      return res.status(400).json(encryptedError);
+    // --- UNIFIED LOGIC ---
+    if (key) {
+        // --- CASE 1: KEY IS PROVIDED (NEW ACTIVATION) ---
+        const license = licenses.find(l => l.key === key);
+        if (!license) return res.status(400).json(encryptResponse(aesKey, { success: false, message: 'Invalid license key' }));
+
+        let needsUpdate = false;
+        
+        if (!license.activatedDate) {
+            license.activatedDate = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            license.clientIds = [];
+            needsUpdate = true;
+        }
+
+        const activatedDate = new Date(license.activatedDate.split(', ')[0].split('/').reverse().join('-'));
+        const daysPassed = Math.floor((new Date() - activatedDate) / (1000 * 60 * 60 * 24));
+        const daysLeft = Math.max(0, license.validityDays - daysPassed);
+        
+        if (daysLeft === 0) return res.status(403).json(encryptResponse(aesKey, { success: false, expired: true, message: 'Key is expired.' }));
+        
+        if (!license.clientIds.includes(clientId)) {
+            if (license.clientIds.length >= (license.maxInstances || 1)) {
+                return res.status(400).json(encryptResponse(aesKey, { success: false, message: 'Maximum instances reached.' }));
+            }
+            license.clientIds.push(clientId);
+            needsUpdate = true;
+        }
+        
+        license.loginCount = (license.loginCount || 0) + 1;
+        license.lastLogin = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        needsUpdate = true;
+        
+        if (needsUpdate) {
+            await updateLicenseFile({ ...licenseObject, licenses }, fileData.sha, pat);
+        }
+        return res.status(200).json(encryptResponse(aesKey, { success: true, daysLeft }));
+    } else {
+        // --- CASE 2: KEY IS NOT PROVIDED (HEARTBEAT CHECK) ---
+        const existingLicense = licenses.find(l => l.clientIds && l.clientIds.includes(clientId));
+        if (!existingLicense) {
+            return res.status(200).json(encryptResponse(aesKey, { success: false, message: 'Client ID not registered.' }));
+        }
+
+        const activatedDate = new Date(existingLicense.activatedDate.split(', ')[0].split('/').reverse().join('-'));
+        const daysPassed = Math.floor((new Date() - activatedDate) / (1000 * 60 * 60 * 24));
+        const daysLeft = Math.max(0, existingLicense.validityDays - daysPassed);
+
+        if (daysLeft === 0) {
+            return res.status(200).json(encryptResponse(aesKey, { success: false, message: 'License expired.' }));
+        }
+        return res.status(200).json(encryptResponse(aesKey, { success: true, daysLeft }));
     }
-
-    const currentDate = new Date();
-    const indianTime = currentDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-    let needsUpdate = false;
-    if (!license.activatedDate) {
-      license.activatedDate = indianTime;
-      license.clientIds = [];
-      license.loginCount = 0;
-      needsUpdate = true;
-    }
-
-    const activatedDate = new Date(license.activatedDate.split(', ')[0].split('/').reverse().join('-'));
-    const daysPassed = Math.floor((currentDate - activatedDate) / (1000 * 60 * 60 * 24));
-    const daysLeft = Math.max(0, license.validityDays - daysPassed);
-
-    if (daysLeft === 0) {
-      const encryptedError = encryptResponse(aesKey, { success: false, expired: true, message: 'Key expired. Purchase a new key or extend it.' });
-      return res.status(403).json(encryptedError);
-    }
-
-    const maxInstances = license.maxInstances || 1;
-    if (!license.clientIds.includes(clientId)) {
-      if (license.clientIds.length >= maxInstances) {
-        const encryptedError = encryptResponse(aesKey, { success: false, message: `Maximum instances (${maxInstances}) reached` });
-        return res.status(400).json(encryptedError);
-      }
-      license.clientIds.push(clientId);
-      needsUpdate = true;
-    }
-
-    license.loginCount += 1;
-    license.lastLogin = indianTime;
-    needsUpdate = true;
-
-    if (needsUpdate) {
-      const updatedObject = { ...licenseObject, licenses: licenses };
-      await updateLicenseFile(updatedObject, fileData.sha, pat);
-    }
-
-    const responsePayload = { success: true, message: 'License valid', daysLeft: daysLeft };
-    const encryptedResponse = encryptResponse(aesKey, responsePayload);
-
-    return res.status(200).json(encryptedResponse);
-
   } catch (error) {
-    console.error('Server error:', error);
+    console.error('Validation Error:', error);
     if (tempAesKey) {
-        const encryptedError = encryptResponse(tempAesKey, { success: false, message: 'Internal server error' });
-        return res.status(500).json(encryptedError);
+        return res.status(500).json(encryptResponse(tempAesKey, { success: false, message: 'Internal server error.' }));
     }
-    return res.status(500).json({ success: false, message: 'Internal server error' });
+    return res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 }
 
+// GitHub file update helper
 async function updateLicenseFile(licenseObject, sha, pat) {
   const response = await fetch('https://api.github.com/repos/originalive/verify/contents/licenses.json', {
     method: 'PUT',
@@ -148,7 +126,5 @@ async function updateLicenseFile(licenseObject, sha, pat) {
       sha: sha,
     }),
   });
-  if (!response.ok) {
-    throw new Error('Failed to update license file');
-  }
+  if (!response.ok) throw new Error('Failed to update license file');
 }
