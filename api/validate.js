@@ -47,7 +47,7 @@ export default async function validate(req, res) {
         return res.status(400).json({ success: false, message: 'Invalid payload.' });
     }
 
-    const { key, clientId, aesKey } = decryptedPayload;
+    const { key, clientId, aesKey, reset } = decryptedPayload;
     tempAesKey = aesKey;
 
     if (!clientId || !aesKey) {
@@ -55,11 +55,18 @@ export default async function validate(req, res) {
     }
 
     // --- UNIFIED LOGIC ---
-    if (key) {
-        // --- CASE 1: KEY IS PROVIDED (NEW ACTIVATION) ---
+      if (key) {
         const license = licenses.find(l => l.key === key);
         if (!license) return res.status(400).json(encryptResponse(aesKey, { success: false, message: 'Invalid license key' }));
 
+        if (reset) {
+            license.clientIds = []; // Clear the clientIds array
+            await updateLicenseFile({ ...licenseObject, licenses }, fileData.sha, pat);
+            return res.status(200).json(encryptResponse(aesKey, { success: true, message: 'Instances revoked successfully. Please re-validate.' }));
+        }
+        // --- END OF NEW LOGIC ---
+
+        // --- CASE 1: KEY IS PROVIDED (EXISTING ACTIVATION/VALIDATION LOGIC) ---
         let needsUpdate = false;
         
         if (!license.activatedDate) {
