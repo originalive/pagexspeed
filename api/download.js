@@ -4,3 +4,4 @@ const extensionDownloadUrl = "https://drive.usercontent.google.com/uc?id=104wDPd
     url: extensionDownloadUrl,
   });
 }
+
