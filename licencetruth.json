@@ -1,3 +1,39 @@
 {
-  "notice": "🚨 Agar aapne Extension TRY kiya aur aapka book hua hai ya kch improvement chahiye toh msg kare Telegram: @originnop!"
+  "licenses": [
+    {
+      "key": "Aman",
+      "user": "Aman",
+      "email": "aman@example.com"
+    },
+    {
+      "key": "Gaurav",
+      "user": "Gaurav",
+      "email": "gaurav@example.com"
+    },
+    {
+      "key": "Mahabeer",
+      "user": "Mahabeer",
+      "email": "mahabeer@example.com"
+    },
+    {
+      "key": "Priya",
+      "user": "Priya",
+      "email": "priya@example.com"
+    },
+    {
+      "key": "Salim",
+      "user": "Salim",
+      "email": "salim@example.com"
+    },
+    {
+      "key": "Aarti",
+      "user": "Aarti",
+      "email": "aarti@example.com"
+    },
+    {
+      "key": "Rajat",
+      "user": "Rajat",
+      "email": "rajat@example.com"
+    }
+  ]
 }
