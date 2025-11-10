@@ -8,7 +8,7 @@ export default async function validate(req, res) {
 
   try {
     const pat = process.env.GITHUB_BLUEBERRY;
-    const response = await fetch('https://api.github.com/repos/originalive/verify/contents/licenses.json', {
+    const response = await fetch('https://api.github.com/repos/originalive/verify/contents/licencetruth.json', {
       headers: { Authorization: `token ${pat}`, Accept: 'application/vnd.github.v3+json' },
     });
 
