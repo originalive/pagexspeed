@@ -1,39 +1,11 @@
 {
   "licenses": [
-    {
-      "key": "Aman",
-      "user": "Aman",
-      "email": "aman@example.com"
-    },
-    {
-      "key": "Gaurav",
-      "user": "Gaurav",
-      "email": "gaurav@example.com"
-    },
-    {
-      "key": "Mahabeer",
-      "user": "Mahabeer",
-      "email": "mahabeer@example.com"
-    },
-    {
-      "key": "Priya",
-      "user": "Priya",
-      "email": "priya@example.com"
-    },
-    {
-      "key": "Salim",
-      "user": "Salim",
-      "email": "salim@example.com"
-    },
-    {
-      "key": "Aarti",
-      "user": "Aarti",
-      "email": "aarti@example.com"
-    },
-    {
-      "key": "Rajat",
-      "user": "Rajat",
-      "email": "rajat@example.com"
-    }
+    { "key": "Aman" },
+    { "key": "Gaurav" },
+    { "key": "Mahabeer" },
+    { "key": "Priya" },
+    { "key": "Salim" },
+    { "key": "Aarti" },
+    { "key": "Rajat" }
   ]
 }
