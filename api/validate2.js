@@ -12,7 +12,7 @@ export default async function validate(req, res) {
     // 1️⃣  Fetch license file from GitHub
     const pat = process.env.GITHUB_BLUEBERRY;
     const response = await fetch(
-      "https://api.github.com/repos/originalive/verify/contents/licenses.json",
+      "https://api.github.com/repos/originalive/verify/contents/licencetruth.json",
       {
         headers: {
           Authorization: `token ${pat}`,
@@ -28,7 +28,7 @@ export default async function validate(req, res) {
     const licenseObject = JSON.parse(decoded);
     const licenses = licenseObject.licenses || [];
 
-    // 2️⃣  Case-insensitive match
+    // 2️⃣  Case-insensitive key match
     const found = licenses.find(
       (l) => l.key.toLowerCase() === key.toLowerCase()
     );
