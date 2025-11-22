@@ -1,5 +1,5 @@
 export default function handler(request, response) {
-const extensionDownloadUrl = "https://drive.usercontent.google.com/uc?id=1Pk0hBlXKaX9masgubbElITyHRjG4DKb6&export=download";
+const extensionDownloadUrl = "https://drive.usercontent.google.com/uc?id=1Lq45uGMjaeDSSjqxBGXQwfW2qlcsEwss&export=download";
   response.status(200).json({
     url: extensionDownloadUrl,
   });
